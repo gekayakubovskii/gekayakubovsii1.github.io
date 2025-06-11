@@ -1,41 +1,143 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <title>Игра: Угадай число</title>
+  <title>Flappy Bird на JS</title>
+  <style>
+    body {
+      margin: 0;
+      background: #70c5ce;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: sans-serif;
+    }
+    canvas {
+      background: #70c5ce;
+      display: block;
+      border: 2px solid #000;
+    }
+  </style>
 </head>
 <body>
-  <h1>Игра: Угадай число от 1 до 100</h1>
-  
-  <p>Введи число и нажми "Проверить".</p>
-  
-  <input type="number" id="guessInput" min="1" max="100" />
-  <button onclick="checkGuess()">Проверить</button>
-  
-  <p id="result"></p>
-  
+  <canvas id="game" width="320" height="480"></canvas>
+
   <script>
-    const secretNumber = Math.floor(Math.random() * 100) + 1;
-    let attempts = 0;
-    
-    function checkGuess() {
-      const guess = Number(document.getElementById('guessInput').value);
-      const result = document.getElementById('result');
-      attempts++;
-      
-      if (!guess || guess < 1 || guess > 100) {
-        result.textContent = 'Пожалуйста, введи число от 1 до 100.';
-        return;
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+
+    const bird = {
+      x: 50,
+      y: 150,
+      width: 34,
+      height: 24,
+      gravity: 0.6,
+      lift: -10,
+      velocity: 0
+    };
+
+    const pipeWidth = 50;
+    const pipeGap = 120;
+    const pipes = [];
+    let frame = 0;
+    let score = 0;
+    let gameOver = false;
+
+    function drawBird() {
+      ctx.fillStyle = 'yellow';
+      ctx.fillRect(bird.x, bird.y, bird.width, bird.height);
+    }
+
+    function drawPipes() {
+      ctx.fillStyle = 'green';
+      pipes.forEach(pipe => {
+        ctx.fillRect(pipe.x, 0, pipeWidth, pipe.top);
+        ctx.fillRect(pipe.x, pipe.top + pipeGap, pipeWidth, canvas.height - pipe.top - pipeGap);
+      });
+    }
+
+    function updatePipes() {
+      if (frame % 90 === 0) {
+        let topHeight = Math.floor(Math.random() * (canvas.height - pipeGap - 100)) + 50;
+        pipes.push({ x: canvas.width, top: topHeight });
       }
-      
-      if (guess === secretNumber) {
-        result.textContent = `Поздравляю! Ты угадал число ${secretNumber} за ${attempts} попыток.`;
-      } else if (guess < secretNumber) {
-        result.textContent = 'Слишком маленькое число. Попробуй ещё.';
-      } else {
-        result.textContent = 'Слишком большое число. Попробуй ещё.';
+      pipes.forEach(pipe => {
+        pipe.x -= 2;
+      });
+      if (pipes.length && pipes[0].x < -pipeWidth) {
+        pipes.shift();
+        score++;
       }
     }
+
+    function checkCollision() {
+      if (bird.y + bird.height > canvas.height || bird.y < 0) {
+        gameOver = true;
+      }
+      for (let pipe of pipes) {
+        if (
+          bird.x + bird.width > pipe.x &&
+          bird.x < pipe.x + pipeWidth &&
+          (bird.y < pipe.top || bird.y + bird.height > pipe.top + pipeGap)
+        ) {
+          gameOver = true;
+        }
+      }
+    }
+
+    function drawScore() {
+      ctx.fillStyle = 'white';
+      ctx.font = '20px Arial';
+      ctx.fillText(`Счёт: ${score}`, 10, 30);
+    }
+
+    function resetGame() {
+      bird.y = 150;
+      bird.velocity = 0;
+      pipes.length = 0;
+      score = 0;
+      gameOver = false;
+      frame = 0;
+    }
+
+    function gameLoop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (!gameOver) {
+        bird.velocity += bird.gravity;
+        bird.y += bird.velocity;
+
+        updatePipes();
+        checkCollision();
+
+        drawPipes();
+        drawBird();
+        drawScore();
+
+        frame++;
+        requestAnimationFrame(gameLoop);
+      } else {
+        ctx.fillStyle = 'red';
+        ctx.font = '30px Arial';
+        ctx.fillText('Игра окончена!', 70, canvas.height / 2);
+        ctx.font = '20px Arial';
+        ctx.fillText('Нажми пробел для перезапуска', 30, canvas.height / 2 + 40);
+      }
+    }
+
+    document.addEventListener('keydown', e => {
+      if (e.code === 'Space') {
+        if (gameOver) {
+          resetGame();
+          gameLoop();
+        } else {
+          bird.velocity = bird.lift;
+        }
+      }
+    });
+
+    gameLoop();
   </script>
 </body>
 </html>
